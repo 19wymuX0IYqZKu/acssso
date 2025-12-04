@@ -3,106 +3,129 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+    <title>Firebase Google SSO</title>
 
-    <!-- update the version number as needed -->
     <script defer src="/__/firebase/12.6.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
     <script defer src="/__/firebase/12.6.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
-
+    
+    <script defer src="/__/firebase/init.js?useEmulator=false"></script> 
     <style media="screen">
       body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
+      #message { background: white; max-width: 450px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
       #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
       #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
       #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
+      #message a, #google-signin-btn { 
+        display: block; 
+        text-align: center; 
+        background: #4285F4; /* Google Blue */
+        text-transform: uppercase; 
+        text-decoration: none; 
+        color: white; 
+        padding: 16px; 
+        border-radius: 4px; 
+        cursor: pointer;
+        margin-top: 10px;
       }
+      #signout-btn {
+        background: #DB4437; /* Google Red */
+      }
+      #message, #message a, #message button { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
+      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
+      /* ... other styles ... */
     </style>
   </head>
   <body>
     <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+      <h2>Authentication Status</h2>
+      <h1 id="user-status">You are currently signed out.</h1>
+      
+      <p id="user-details" style="display:none;"></p>
+      
+      <button id="google-signin-btn">Sign in with Google</button>
+      <button id="signout-btn" style="display:none;">Sign Out</button>
+      
     </div>
     <p id="load">Firebase SDK Loading&hellip;</p>
 
     <script>
       document.addEventListener('DOMContentLoaded', function() {
+        // --- 1. Get DOM Elements ---
         const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+        const userStatusEl = document.querySelector('#user-status');
+        const userDetailsEl = document.querySelector('#user-details');
+        const signInBtn = document.querySelector('#google-signin-btn');
+        const signOutBtn = document.querySelector('#signout-btn');
 
         try {
           let app = firebase.app();
+          
+          // --- 2. Initialize Auth Provider ---
+          const auth = firebase.auth();
+          const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+          // --- 3. Authentication State Listener ---
+          // This runs whenever the user signs in or signs out.
+          auth.onAuthStateChanged(user => {
+            if (user) {
+              // User is signed in
+              userStatusEl.textContent = `Welcome back, ${user.displayName}!`;
+              userDetailsEl.innerHTML = `
+                User ID: ${user.uid}<br>
+                Email: ${user.email}
+              `;
+              userDetailsEl.style.display = 'block';
+              signInBtn.style.display = 'none';
+              signOutBtn.style.display = 'block';
+              loadEl.textContent = 'User is authenticated.';
+            } else {
+              // User is signed out
+              userStatusEl.textContent = 'You are currently signed out.';
+              userDetailsEl.style.display = 'none';
+              signInBtn.style.display = 'block';
+              signOutBtn.style.display = 'none';
+              loadEl.textContent = 'Ready to sign in.';
+            }
+          });
+
+          // --- 4. Sign-In Handler ---
+          signInBtn.addEventListener('click', () => {
+            // Use signInWithPopup for a simple, quick flow.
+            auth.signInWithPopup(googleProvider)
+              .then((result) => {
+                // The user is already handled by onAuthStateChanged
+                console.log("Sign-in successful:", result.user.uid);
+              })
+              .catch((error) => {
+                console.error("Authentication Error:", error.message);
+                alert(`Sign-in failed: ${error.message}`);
+              });
+          });
+
+          // --- 5. Sign-Out Handler ---
+          signOutBtn.addEventListener('click', () => {
+            auth.signOut()
+              .then(() => {
+                // The user is already handled by onAuthStateChanged
+                console.log("Sign-out successful.");
+              })
+              .catch((error) => {
+                console.error("Sign-out Error:", error.message);
+              });
+          });
+          
           let features = [
             'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
+            // ... (other features as needed)
           ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
+          // loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`; // Simplified for auth message above
+
         } catch (e) {
           console.error(e);
           loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
         }
       });
     </script>
-    <script type="module">
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
-
-    // Your web app's Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyBguMl7HKPfKqrCZI77HFtZ2VEFvjRAQms",
-      authDomain: "acs20251204.firebaseapp.com",
-      projectId: "acs20251204",
-      storageBucket: "acs20251204.firebasestorage.app",
-      messagingSenderId: "1098809722952",
-      appId: "1:1098809722952:web:5b63eff20e2a0cc992707d"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-  </script>
-  </body>
+    
+    </body>
 </html>
