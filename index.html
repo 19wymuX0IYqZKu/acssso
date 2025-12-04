@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Firebase Google SSO</title>
 
-    <script defer src="/__/firebase/12.6.0/firebase-app-compat.js"></script>
-    <script defer src="/__/firebase/12.6.0/firebase-auth-compat.js"></script>
-    
-    <script defer src="/__/firebase/init.js?useEmulator=false"></script> 
     <style media="screen">
       body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
       #message { background: white; max-width: 450px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
@@ -32,13 +28,12 @@
       }
       #message, #message a, #message button { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
       #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      /* ... other styles ... */
     </style>
   </head>
   <body>
     <div id="message">
       <h2>Authentication Status</h2>
-      <h1 id="user-status">You are currently signed out.</h1>
+      <h1 id="user-status">Firebase App Loading...</h1>
       
       <p id="user-details" style="display:none;"></p>
       
@@ -48,84 +43,68 @@
     </div>
     <p id="load">Firebase SDK Loading&hellip;</p>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        // --- 1. Get DOM Elements ---
-        const loadEl = document.querySelector('#load');
-        const userStatusEl = document.querySelector('#user-status');
-        const userDetailsEl = document.querySelector('#user-details');
-        const signInBtn = document.querySelector('#google-signin-btn');
-        const signOutBtn = document.querySelector('#signout-btn');
+    <script type="module">
+      // Import modules using Google CDN links (V9 Modular)
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+      import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+      
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyBguMl7HKPfKqrCZI77HFtZ2VEFvjRAQms",
+        authDomain: "acs20251204.firebaseapp.com",
+        projectId: "acs20251204",
+        storageBucket: "acs20251204.firebasestorage.app",
+        messagingSenderId: "1098809722952",
+        appId: "1:1098809722952:web:5b63eff20e2a0cc992707d"
+      };
 
-        try {
-          let app = firebase.app();
-          
-          // --- 2. Initialize Auth Provider ---
-          const auth = firebase.auth();
-          const googleProvider = new firebase.auth.GoogleAuthProvider();
+      // Initialize Firebase App and Auth service
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const googleProvider = new GoogleAuthProvider();
+      
+      // --- Get DOM Elements ---
+      const loadEl = document.querySelector('#load');
+      const userStatusEl = document.querySelector('#user-status');
+      const userDetailsEl = document.querySelector('#user-details');
+      const signInBtn = document.querySelector('#google-signin-btn');
+      const signOutBtn = document.querySelector('#signout-btn');
+      
+      loadEl.textContent = 'Firebase SDK loaded and initializing.';
 
-          // --- 3. Authentication State Listener ---
-          // This runs whenever the user signs in or signs out.
-          auth.onAuthStateChanged(user => {
-            if (user) {
-              // User is signed in
-              userStatusEl.textContent = `Welcome back, ${user.displayName}!`;
-              userDetailsEl.innerHTML = `
-                User ID: ${user.uid}<br>
-                Email: ${user.email}
-              `;
-              userDetailsEl.style.display = 'block';
-              signInBtn.style.display = 'none';
-              signOutBtn.style.display = 'block';
-              loadEl.textContent = 'User is authenticated.';
-            } else {
-              // User is signed out
-              userStatusEl.textContent = 'You are currently signed out.';
-              userDetailsEl.style.display = 'none';
-              signInBtn.style.display = 'block';
-              signOutBtn.style.display = 'none';
-              loadEl.textContent = 'Ready to sign in.';
-            }
-          });
-
-          // --- 4. Sign-In Handler ---
-          signInBtn.addEventListener('click', () => {
-            // Use signInWithPopup for a simple, quick flow.
-            auth.signInWithPopup(googleProvider)
-              .then((result) => {
-                // The user is already handled by onAuthStateChanged
-                console.log("Sign-in successful:", result.user.uid);
-              })
-              .catch((error) => {
-                console.error("Authentication Error:", error.message);
-                alert(`Sign-in failed: ${error.message}`);
-              });
-          });
-
-          // --- 5. Sign-Out Handler ---
-          signOutBtn.addEventListener('click', () => {
-            auth.signOut()
-              .then(() => {
-                // The user is already handled by onAuthStateChanged
-                console.log("Sign-out successful.");
-              })
-              .catch((error) => {
-                console.error("Sign-out Error:", error.message);
-              });
-          });
-          
-          let features = [
-            'auth', 
-            // ... (other features as needed)
-          ].filter(feature => typeof app[feature] === 'function');
-          // loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`; // Simplified for auth message above
-
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
+      // --- Authentication State Listener (V9 Syntax) ---
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // User is signed in
+          userStatusEl.textContent = `Welcome back, ${user.displayName}!`;
+          userDetailsEl.innerHTML = `User ID: ${user.uid}<br>Email: ${user.email}`;
+          userDetailsEl.style.display = 'block';
+          signInBtn.style.display = 'none';
+          signOutBtn.style.display = 'block';
+          loadEl.textContent = 'User is authenticated.';
+        } else {
+          // User is signed out
+          userStatusEl.textContent = 'You are currently signed out.';
+          userDetailsEl.style.display = 'none';
+          signInBtn.style.display = 'block';
+          signOutBtn.style.display = 'none';
+          loadEl.textContent = 'Ready to sign in.';
         }
       });
+
+      // --- Sign-In Handler (V9 Syntax) ---
+      signInBtn.addEventListener('click', () => {
+        signInWithPopup(auth, googleProvider)
+          .then(() => console.log("Sign-in initiated/successful"))
+          .catch((error) => console.error("Authentication Error:", error.message));
+      });
+
+      // --- Sign-Out Handler (V9 Syntax) ---
+      signOutBtn.addEventListener('click', () => {
+        signOut(auth)
+          .then(() => console.log("Sign-out successful."))
+          .catch((error) => console.error("Sign-out Error:", error.message));
+      });
     </script>
-    
-    </body>
+  </body>
 </html>
