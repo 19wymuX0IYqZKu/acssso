@@ -4,9 +4,12 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithRedirect, 
+  signInWithPopup,
   getRedirectResult, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  browserLocalPersistence, 
+  setPersistence
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
 // Your web app's Firebase configuration
@@ -46,18 +49,27 @@ function clearError() {
   errorContainer.textContent = '';
 }
 
+// --- 0. Ensure Persistence is Local (Critical for Redirect flows) ---
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("Session persistence set to LOCAL");
+  })
+  .catch((error) => {
+    console.error("Persistence Error:", error);
+  });
+
 // --- 1. Handle Redirect Result (Check for errors returning from Google) ---
 getRedirectResult(auth)
   .then((result) => {
     // If the user just returned from the redirect flow, result will be defined.
-    // If they are just loading the page normally, it will be null.
     if (result) {
       console.log("Redirect sign-in successful for:", result.user.email);
-      // No need to update UI here, onAuthStateChanged will handle it.
+    } else {
+      console.log("No redirect result found (normal page load).");
     }
   })
   .catch((error) => {
-    showError(`Login Failed: ${error.message}`);
+    showError(`Login Failed (Redirect): ${error.message}`);
   });
 
 // --- 2. Authentication State Listener ---
@@ -72,7 +84,7 @@ onAuthStateChanged(auth, (user) => {
     signOutBtn.style.display = 'block';
     
     loadEl.textContent = 'User is authenticated.';
-    clearError(); // Clear any previous login errors if we are now auth'd
+    clearError(); 
   } else {
     // User is signed out
     userStatusEl.textContent = 'You are currently signed out.';
@@ -85,13 +97,27 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// --- 3. Sign-In Handler (Redirect) ---
+// --- 3. Sign-In Handler (Hybrid) ---
 signInBtn.addEventListener('click', () => {
-  loadEl.textContent = 'Redirecting to Google...';
   clearError();
-  signInWithRedirect(auth, googleProvider);
-  // Note: The page will redirect away, so no .then() is needed here usually.
-  // Errors will be caught by getRedirectResult when the page reloads.
+  
+  // Check hostname to decide method
+  const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
+  if (isLocalhost) {
+    loadEl.textContent = 'Signing in with Popup (Localhost)...';
+    signInWithPopup(auth, googleProvider)
+      .then((result) => {
+        console.log("Popup sign-in successful:", result.user.email);
+      })
+      .catch((error) => {
+        showError(`Popup Login Failed: ${error.message}`);
+        loadEl.textContent = 'Sign-in error.';
+      });
+  } else {
+    loadEl.textContent = 'Redirecting to Google...';
+    signInWithRedirect(auth, googleProvider);
+  }
 });
 
 // --- 4. Sign-Out Handler ---
@@ -99,7 +125,6 @@ signOutBtn.addEventListener('click', () => {
   signOut(auth)
     .then(() => {
       console.log("Sign-out successful.");
-      // UI updates automatically via onAuthStateChanged
     })
     .catch((error) => showError(`Sign-out Error: ${error.message}`));
 });
