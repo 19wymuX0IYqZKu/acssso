@@ -11,28 +11,61 @@
       #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
       #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
       #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a, #google-signin-btn { 
-        display: block; 
-        text-align: center; 
+      #message a, #google-signin-btn {
+        display: block;
+        text-align: center;
         background: #4285F4; /* Google Blue */
-        text-transform: uppercase; 
-        text-decoration: none; 
-        color: white; 
-        padding: 16px; 
-        border-radius: 4px; 
+        text-transform: uppercase;
+        text-decoration: none;
+        color: white;
+        padding: 16px;
+        border-radius: 4px;
         cursor: pointer;
         margin-top: 10px;
+        border: none;
+        width: 100%;
+        font-size: 14px;
+        font-weight: 500;
       }
       #signout-btn {
         background: #DB4437; /* Google Red */
+        display: block;
+        text-align: center;
+        text-transform: uppercase;
+        text-decoration: none;
+        color: white;
+        padding: 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+        border: none;
+        width: 100%;
+        font-size: 14px;
+        font-weight: 500;
       }
       #message, #message a, #message button { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
       #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
+      
+      /* Error Message Styling */
+      #error-container {
+        display: none;
+        background-color: #ffebee;
+        color: #c62828;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 16px;
+        border: 1px solid #ffcdd2;
+        font-size: 13px;
+      }
     </style>
   </head>
   <body>
     <div id="message">
       <h2>Authentication Status</h2>
+      
+      <!-- Error Container -->
+      <div id="error-container"></div>
+
       <h1 id="user-status">Firebase App Loading...</h1>
       
       <p id="user-details" style="display:none;"></p>
@@ -46,7 +79,14 @@
     <script type="module">
       // Import modules using Google CDN links (V9 Modular)
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-      import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+      import { 
+        getAuth, 
+        GoogleAuthProvider, 
+        signInWithRedirect, 
+        getRedirectResult, 
+        signOut, 
+        onAuthStateChanged 
+      } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
       
       // Your web app's Firebase configuration
       const firebaseConfig = {
@@ -69,41 +109,78 @@
       const userDetailsEl = document.querySelector('#user-details');
       const signInBtn = document.querySelector('#google-signin-btn');
       const signOutBtn = document.querySelector('#signout-btn');
+      const errorContainer = document.querySelector('#error-container');
       
       loadEl.textContent = 'Firebase SDK loaded and initializing.';
 
-      // --- Authentication State Listener (V9 Syntax) ---
+      // --- Helper: Display Error ---
+      function showError(message) {
+        errorContainer.textContent = message;
+        errorContainer.style.display = 'block';
+        console.error(message);
+      }
+
+      function clearError() {
+        errorContainer.style.display = 'none';
+        errorContainer.textContent = '';
+      }
+
+      // --- 1. Handle Redirect Result (Check for errors returning from Google) ---
+      getRedirectResult(auth)
+        .then((result) => {
+          // If the user just returned from the redirect flow, result will be defined.
+          // If they are just loading the page normally, it will be null.
+          if (result) {
+            console.log("Redirect sign-in successful for:", result.user.email);
+            // No need to update UI here, onAuthStateChanged will handle it.
+          }
+        })
+        .catch((error) => {
+          showError(`Login Failed: ${error.message}`);
+        });
+
+      // --- 2. Authentication State Listener ---
       onAuthStateChanged(auth, (user) => {
         if (user) {
           // User is signed in
           userStatusEl.textContent = `Welcome back, ${user.displayName}!`;
           userDetailsEl.innerHTML = `User ID: ${user.uid}<br>Email: ${user.email}`;
           userDetailsEl.style.display = 'block';
+          
           signInBtn.style.display = 'none';
           signOutBtn.style.display = 'block';
+          
           loadEl.textContent = 'User is authenticated.';
+          clearError(); // Clear any previous login errors if we are now auth'd
         } else {
           // User is signed out
           userStatusEl.textContent = 'You are currently signed out.';
           userDetailsEl.style.display = 'none';
+          
           signInBtn.style.display = 'block';
           signOutBtn.style.display = 'none';
+          
           loadEl.textContent = 'Ready to sign in.';
         }
       });
 
-      // --- Sign-In Handler (V9 Syntax) ---
+      // --- 3. Sign-In Handler (Redirect) ---
       signInBtn.addEventListener('click', () => {
-        signInWithPopup(auth, googleProvider)
-          .then(() => console.log("Sign-in initiated/successful"))
-          .catch((error) => console.error("Authentication Error:", error.message));
+        loadEl.textContent = 'Redirecting to Google...';
+        clearError();
+        signInWithRedirect(auth, googleProvider);
+        // Note: The page will redirect away, so no .then() is needed here usually.
+        // Errors will be caught by getRedirectResult when the page reloads.
       });
 
-      // --- Sign-Out Handler (V9 Syntax) ---
+      // --- 4. Sign-Out Handler ---
       signOutBtn.addEventListener('click', () => {
         signOut(auth)
-          .then(() => console.log("Sign-out successful."))
-          .catch((error) => console.error("Sign-out Error:", error.message));
+          .then(() => {
+            console.log("Sign-out successful.");
+            // UI updates automatically via onAuthStateChanged
+          })
+          .catch((error) => showError(`Sign-out Error: ${error.message}`));
       });
     </script>
   </body>
