@@ -3,14 +3,30 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Firebase Google SSO</title>
+    <title>Firebase Google SSO - Debug Mode</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+      #debug-console {
+        background: #000;
+        color: #0f0;
+        font-family: monospace;
+        padding: 10px;
+        margin: 20px auto;
+        max-width: 600px;
+        height: 200px;
+        overflow-y: scroll;
+        border: 2px solid #333;
+        font-size: 12px;
+      }
+      .log-entry { border-bottom: 1px solid #333; padding: 2px 0; }
+      .log-error { color: #ff5252; }
+      .log-success { color: #69f0ae; }
+    </style>
   </head>
   <body>
     <div id="message">
       <h2>Authentication Status</h2>
       
-      <!-- Error Container -->
       <div id="error-container"></div>
 
       <h1 id="user-status">Firebase App Loading...</h1>
@@ -21,6 +37,12 @@
       <button id="signout-btn" style="display:none;">Sign Out</button>
       
     </div>
+
+    <!-- On-Screen Debug Console -->
+    <div id="debug-console">
+      <div class="log-entry">--- Debug Log Started ---</div>
+    </div>
+
     <p id="load">Firebase SDK Loading&hellip;</p>
 
     <script type="module" src="app.js"></script>
